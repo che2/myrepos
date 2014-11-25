@@ -569,7 +569,7 @@ http://myrepos.branchable.com/
 use warnings;
 use strict;
 use Getopt::Long;
-use Cwd qw(getcwd abs_path);
+use Cwd qw(abs_path);
 
 # things that can happen when mr runs a command
 use constant {
@@ -578,6 +578,19 @@ use constant {
 	SKIPPED => 2,
 	ABORT => 3,
 };
+
+sub getcwd {
+   my $cwd = Cwd::getcwd();
+   if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
+      my $e = my ($e_dev, $e_node) = stat($ENV{PWD});
+      my $c = my ($c_dev, $c_node) = stat($cwd);
+      if ($e && $c && $e_dev == $c_dev && $e_node == $c_node) {
+         $cwd = $ENV{PWD};
+      }
+   }
+
+   return $cwd;
+}
 
 # configurables
 my $config_overridden=0;
@@ -1307,8 +1320,11 @@ sub loadconfig {
 			}
 		}
 
-		$dir=abs_path($dir)."/";
-		
+		# $dir=abs_path($dir)."/";
+		# Don't use abs_path to support symlinks.  Also, add a trailing slash
+		# if none exists.
+		$dir=~ s!/*$!/!;
+
 		if (! exists $configfiles{$dir}) {
 			$configfiles{$dir}=$f;
 		}
